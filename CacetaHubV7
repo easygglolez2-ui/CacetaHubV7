@@ -1,0 +1,163 @@
+-- Hacked screen pro Delta
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- ===== GUI raiz =====
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "HackedGUI"
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder = 999999
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Fundo preto que vai piscar
+local bg = Instance.new("Frame")
+bg.Name = "Bg"
+bg.Size = UDim2.fromScale(1, 1)
+bg.BackgroundColor3 = Color3.new(0, 0, 0)
+bg.BorderSizePixel = 0
+bg.Parent = screenGui
+
+-- Texto principal
+local mainText = Instance.new("TextLabel")
+mainText.Name = "MainText"
+mainText.Size = UDim2.fromScale(1, 1)
+mainText.BackgroundTransparency = 1
+mainText.Text = "You've been hacked."
+mainText.TextScaled = true
+mainText.Font = Enum.Font.GothamBlack
+mainText.TextColor3 = Color3.new(1, 1, 1)
+mainText.TextStrokeTransparency = 0
+mainText.TextStrokeColor3 = Color3.new(0, 0, 0)
+mainText.Parent = screenGui
+
+-- ===== Cores de piscada =====
+local colors = {
+    Color3.new(1, 0, 0),
+    Color3.new(0, 1, 0),
+    Color3.new(0, 0, 1),
+    Color3.new(1, 0, 1),
+    Color3.new(0, 1, 1),
+    Color3.new(1, 1, 0),
+    Color3.new(1, 0.5, 0),
+    Color3.new(0.5, 0, 1),
+}
+
+local flashSpeed = 0.08 -- segundos por troca de cor
+local t = 0
+local flashThread
+
+flashThread = coroutine.create(function()
+    while true do
+        t += flashSpeed
+        local idx = math.floor(t / flashSpeed) % #colors
+        bg.BackgroundColor3 = colors[idx + 1]
+        task.wait(flashSpeed)
+    end
+end)
+task.spawn(flashThread)
+
+-- ===== DVD: "You're idiot bruh" batendo nas bordas =====
+local dvd = Instance.new("TextLabel")
+dvd.Name = "DVD"
+dvd.Size = UDim2.new(0, 220, 0, 50)
+dvd.BackgroundColor3 = Color3.new(1, 1, 1)
+dvd.BorderSizePixel = 4
+dvd.BorderColor3 = Color3.new(0, 0, 0)
+dvd.Text = "You're idiot bruh"
+dvd.TextScaled = true
+dvd.Font = Enum.Font.GothamBold
+dvd.TextColor3 = Color3.new(0, 0, 0)
+dvd.Position = UDim2.new(0, 50, 0, 50)
+dvd.Parent = screenGui
+
+local vp = player:WaitForChild("PlayerGui"):FindFirstChildOfClass("ViewportFrame")
+local vpSize = vp and vp.AbsoluteSize or Vector2.new(1280, 720)
+
+local dvdPos = Vector2.new(50, 50)
+local dvdVel = Vector2.new(260, 200) -- px/s
+
+RunService.RenderStepped:Connect(function(dt)
+    dvdPos += dvdVel * dt
+    local w, h = dvd.AbsoluteSize.X, dvd.AbsoluteSize.Y
+    local maxX = math.max(0, vpSize.X - w)
+    local maxY = math.max(0, vpSize.Y - h)
+
+    if dvdPos.X <= 0 then
+        dvdPos.X = 0
+        dvdVel.X = math.abs(dvdVel.X)
+    elseif dvdPos.X >= maxX then
+        dvdPos.X = maxX
+        dvdVel.X = -math.abs(dvdVel.X)
+    end
+
+    if dvdPos.Y <= 0 then
+        dvdPos.Y = 0
+        dvdVel.Y = math.abs(dvdVel.Y)
+    elseif dvdPos.Y >= maxY then
+        dvdPos.Y = maxY
+        dvdVel.Y = -math.abs(dvdVel.Y)
+    end
+
+    dvd.Position = UDim2.fromOffset(dvdPos.X, dvdPos.Y)
+end)
+
+-- ===== Clique na tela =====
+local clickCount = 0
+local lastClickTime = 0
+local clickWindow = 2 -- segundos pra considerar "clique rápido"
+local clickLabel = nil
+
+local function showClicks()
+    if not clickLabel then
+        clickLabel = Instance.new("TextLabel")
+        clickLabel.Name = "ClickCount"
+        clickLabel.Size = UDim2.new(0, 300, 0, 60)
+        clickLabel.Position = UDim2.new(0.5, -150, 1, -80)
+        clickLabel.BackgroundTransparency = 1
+        clickLabel.TextScaled = true
+        clickLabel.Font = Enum.Font.GothamBold
+        clickLabel.TextColor3 = Color3.new(1, 1, 1)
+        clickLabel.TextStrokeTransparency = 0
+        clickLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+        clickLabel.Parent = screenGui
+    end
+    clickLabel.Text = ("Você clicou %d vez(es). Não adianta, idiota."):format(clickCount)
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+       or input.UserInputType == Enum.UserInputType.Touch then
+        local now = os.clock()
+        if now - lastClickTime > clickWindow then
+            clickCount = 0
+        end
+        lastClickTime = now
+        clickCount += 1
+        showClicks()
+
+        -- pequeno "punch" no texto principal a cada clique
+        TweenService:Create(mainText, TweenInfo.new(0.08), {
+            TextScaled = false,
+            Scale = UDim2.fromScale(1.08, 1.08),
+        }):Play()
+        task.delay(0.08, function()
+            TweenService:Create(mainText, TweenInfo.new(0.08), {
+                TextScaled = true,
+                Scale = UDim2.fromScale(1, 1),
+            }):Play()
+        end)
+    end
+end)
+
+-- ===== Trava o mouse (opcional, comenta se quiser) =====
+mouse.Icon = ""
+
+print("[hacked] rodando. clique na tela pra contar.")
